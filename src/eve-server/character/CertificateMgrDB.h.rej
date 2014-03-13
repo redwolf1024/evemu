@@ -1,0 +1,16 @@
+***************
+*** 34,40 ****
+  : public ServiceDB
+  {
+  public:
+- 	PyRep *GetMyCertificates(uint32 characterID);
+  	PyRep *GetCertificateCategories();
+  	PyRep *GetAllShipCertificateRecommendations();
+  	PyRep *GetCertificateClasses();
+--- 34,39 ----
+  : public ServiceDB
+  {
+  public:
+  	PyRep *GetCertificateCategories();
+  	PyRep *GetAllShipCertificateRecommendations();
+  	PyRep *GetCertificateClasses();

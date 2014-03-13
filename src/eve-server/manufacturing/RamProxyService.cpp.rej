@@ -1,0 +1,51 @@
+***************
+*** 216,222 ****
+                  continue;       // not interested
+  
+              // calculate needed quantity
+-             uint32 qtyNeeded = ceil(cur->quantity * rsp.materialMultiplier * args.runs);
+              if(cur->damagePerJob == 1.0)
+                  qtyNeeded = ceil(qtyNeeded * rsp.charMaterialMultiplier);   // skill multiplier is applied only on fully consumed materials
+  
+--- 216,222 ----
+                  continue;       // not interested
+  
+              // calculate needed quantity
++             double qtyNeeded = ceil(cur->quantity * rsp.materialMultiplier * args.runs);
+              if(cur->damagePerJob == 1.0)
+                  qtyNeeded = ceil(qtyNeeded * rsp.charMaterialMultiplier);   // skill multiplier is applied only on fully consumed materials
+  
+***************
+*** 274,280 ****
+      end = reqItems.end();
+      for(; cur != end; cur++) {
+          if(!cur->isSkill && cur->damagePerJob != 1.0) {
+-             uint32 quantity = cur->quantity * runs * (1.0 - cur->damagePerJob);
+              if(quantity == 0)
+                  continue;
+  
+--- 274,280 ----
+      end = reqItems.end();
+      for(; cur != end; cur++) {
+          if(!cur->isSkill && cur->damagePerJob != 1.0) {
++             double quantity = cur->quantity * runs * (1.0 - cur->damagePerJob);
+              if(quantity == 0)
+                  continue;
+  
+***************
+*** 706,712 ****
+              // check materials
+  
+              // calculate needed quantity
+-             uint32 qtyNeeded = ceil(cur->quantity * rsp.materialMultiplier * runs);
+              if(cur->damagePerJob == 1.0)
+                  qtyNeeded = ceil(qtyNeeded * rsp.charMaterialMultiplier);   // skill multiplier is applied only on fully consumed materials
+  
+--- 706,712 ----
+              // check materials
+  
+              // calculate needed quantity
++             double qtyNeeded = ceil(cur->quantity * rsp.materialMultiplier * runs);
+              if(cur->damagePerJob == 1.0)
+                  qtyNeeded = ceil(qtyNeeded * rsp.charMaterialMultiplier);   // skill multiplier is applied only on fully consumed materials
+  

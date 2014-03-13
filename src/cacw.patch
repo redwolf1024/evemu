@@ -1,0 +1,844 @@
+Index: branches/experimental/include/eve-server/character/CertificateMgrDB.h
+===================================================================
+--- branches/experimental/include/eve-server/character/CertificateMgrDB.h	(revision 1081)
++++ branches/experimental/include/eve-server/character/CertificateMgrDB.h	(working copy)
+@@ -34,7 +34,6 @@
+ : public ServiceDB
+ {
+ public:
+-	PyRep *GetMyCertificates(uint32 characterID);
+ 	PyRep *GetCertificateCategories();
+ 	PyRep *GetAllShipCertificateRecommendations();
+ 	PyRep *GetCertificateClasses();
+Index: branches/experimental/include/eve-server/character/CertificateMgrService.h
+===================================================================
+--- branches/experimental/include/eve-server/character/CertificateMgrService.h	(revision 1081)
++++ branches/experimental/include/eve-server/character/CertificateMgrService.h	(working copy)
+@@ -50,8 +50,6 @@
+ 	PyCallable_DECL_CALL(BatchCertificateGrant)
+ 	PyCallable_DECL_CALL(BatchCertificateUpdate)
+ 
+-	bool _GrantCertificate(uint32 characterID, uint32 certificateID);
+-	bool _UpdateCertificate(uint32 characterID, uint32 certificateID, bool pub);
+ };
+ 
+ #endif /* __CERTIFICATE_MGR_SERVICE__H__INCL__ */
+Index: branches/experimental/include/eve-server/character/Character.h
+===================================================================
+--- branches/experimental/include/eve-server/character/Character.h	(revision 1081)
++++ branches/experimental/include/eve-server/character/Character.h	(working copy)
+@@ -352,6 +352,8 @@
+ public:
+ 	typedef InventoryDB::QueuedSkill QueuedSkill;
+ 	typedef InventoryDB::SkillQueue SkillQueue;
++	typedef InventoryDB::currentCertificates cCertificates;
++	typedef InventoryDB::Certificates Certificates;
+ 
+ 	/**
+ 	 * Loads character.
+@@ -398,6 +400,7 @@
+ 	 * @return Pointer to Skill object; NULL if skill was not found.
+ 	 */
+ 	SkillRef GetSkill(uint32 skillTypeID) const;
++
+ 	/**
+ 	 * Returns skill currently in training.
+ 	 *
+@@ -437,10 +440,42 @@
+ 	 * @param InventoryItem
+ 	 */
+ 	bool InjectSkillIntoBrain(SkillRef skill);
++
+ 	/*
+ 	 * GM Version, allows level set
+ 	 */
+ 	bool InjectSkillIntoBrain(SkillRef skill, uint8 level);
++
++	/* GrantCertificate( uint32 certificateID )
++	 * 
++	 * This will add a certificate into the character
++	 * @author almamu
++	 */
++	void GrantCertificate( uint32 certificateID );
++
++	/* UpdateCertificate( uint32 certificateID, bool pub )
++	 * 
++	 * This will change the public status of the certificate
++	 * @author almamu
++	 */
++	void UpdateCertificate( uint32 certificateID, bool pub );
++
++	/* HasCertificate( uint32 certificateID )
++	 * 
++	 * This will check if the player has a certificate
++	 * @author almamu
++	 */
++	bool HasCertificate( uint32 certificateID ) const;
++
++	/* GetCertificates( )
++	 * 
++	 * This will check if the player has a certificate
++	 * @author almamu
++	 */
++	void GetCertificates( Certificates &crt );
++
++	/**
++
+ 	/* AddSkillToSkillQueue()
+ 	 * 
+ 	 * This will add a skill into the skill queue.
+@@ -528,6 +563,7 @@
+ 
+ 	void SaveCharacter();
+ 	void SaveSkillQueue() const;
++	void SaveCertificates() const;
+ 
+ protected:
+ 	Character(
+@@ -638,6 +674,7 @@
+ 
+ 	// Skill queue:
+ 	SkillQueue m_skillQueue;
++	Certificates m_certificates;
+     EvilNumber m_totalSPtrained;
+ };
+ 
+Index: branches/experimental/include/eve-server/character/Skill.h
+===================================================================
+--- branches/experimental/include/eve-server/character/Skill.h	(revision 1081)
++++ branches/experimental/include/eve-server/character/Skill.h	(working copy)
+@@ -40,6 +40,16 @@
+  * @author Bloody.Rabbit
+  * @date June 2009
+  */
++
++class Certificate
++: public InventoryItem
++{
++	friend class InventoryItem;
++public:
++protected:
++private:
++};
++
+ class Skill
+ : public InventoryItem
+ {
+Index: branches/experimental/include/eve-server/corporation/CorporationDB.h
+===================================================================
+--- branches/experimental/include/eve-server/corporation/CorporationDB.h	(revision 1081)
++++ branches/experimental/include/eve-server/corporation/CorporationDB.h	(working copy)
+@@ -89,7 +89,7 @@
+     bool UpdateLogo(uint32 corpID, const Call_UpdateLogo & upd, PyDict * notif);
+ 	
+ 	bool ChangeCloneType(uint32 characterID, uint32 typeID);
+-
++	PyRep *GetPotentialHomeStations( uint32 constellationID );
+ protected:
+ };
+ 
+Index: branches/experimental/include/eve-server/inventory/InventoryDB.h
+===================================================================
+--- branches/experimental/include/eve-server/inventory/InventoryDB.h	(revision 1081)
++++ branches/experimental/include/eve-server/inventory/InventoryDB.h	(working copy)
+@@ -230,6 +230,31 @@
+ 	 */
+ 	bool SaveSkillQueue(uint32 characterID, const SkillQueue &queue);
+ 
++	// Certificates:
++	struct currentCertificates {
++		uint32 certificateID;
++		uint64 grantDate;
++		bool visibilityFlags;
++	};
++	typedef std::vector<currentCertificates> Certificates;
++
++	/**
++	 * Loads certificates
++	 *
++	 * @param[in] characterID ID of character whose certificates should be loaded.
++	 * @param[in] into Certificates wich loaded data should be stored.
++	 * @return True if load succeeds, false if fails.
++	 */
++	bool LoadCertificates( uint32 characterID, Certificates &into );
++
++	/**
++	 * Saves Certificates
++	 *
++	 * @param[in] characterID ID of the character whose Certificates are saved.
++	 * @param[in] from Certificates to save.
++	 * @return True if save succeds, false if fails.
++	 */
++	bool SaveCertificates( uint32 characterID, const Certificates &from );
+ 	/*
+ 	 * Celestial object stuff
+ 	 * (mapDenormalize)
+Index: branches/experimental/include/eve-server/inventory/ItemRef.h
+===================================================================
+--- branches/experimental/include/eve-server/inventory/ItemRef.h	(revision 1081)
++++ branches/experimental/include/eve-server/inventory/ItemRef.h	(working copy)
+@@ -32,6 +32,7 @@
+ class Ship;
+ class CelestialObject;
+ class Skill;
++class Certificate;
+ class Owner;
+ class Structure;
+ class CargoContainer;
+@@ -54,6 +55,8 @@
+ typedef RefPtr<const CelestialObject>    CelestialObjectConstRef;
+ typedef RefPtr<Skill>                    SkillRef;
+ typedef RefPtr<const Skill>              SkillConstRef;
++typedef RefPtr<Certificate>				 CertificateRef;
++typedef RefPtr<const Certificate>		 CertificateConstRef;
+ typedef RefPtr<Owner>                    OwnerRef;
+ typedef RefPtr<const Owner>              OwnerConstRef;
+ typedef RefPtr<Structure>                StructureRef;
+Index: branches/experimental/include/eve-server/station/StationDB.h
+===================================================================
+--- branches/experimental/include/eve-server/station/StationDB.h	(revision 1081)
++++ branches/experimental/include/eve-server/station/StationDB.h	(working copy)
+@@ -124,6 +124,9 @@
+ 	PyRep *GetSolarSystem(uint32 ssid);
+ 	PyRep *DoGetStation(uint32 ssid);
+ 	PyRep *GetStationItemBits(uint32 sid);
++	PyRep *InstallClone( uint32 characterID, uint32 stationID, Client* who );
++	PyRep *DestroyClone( uint32 characterID, uint32 cloneID, uint32 locationID, Client* who );
++	PyRep *GetCharacterClones( uint32 characterID );
+ 
+ protected:
+ 	static storage thingy;
+Index: branches/experimental/src/eve-common/packets/DogmaIM.xmlp
+===================================================================
+--- branches/experimental/src/eve-common/packets/DogmaIM.xmlp	(revision 1081)
++++ branches/experimental/src/eve-common/packets/DogmaIM.xmlp	(working copy)
+@@ -204,6 +204,12 @@
+     </tupleInline>
+   </elementDef>
+ 
++  <elementDef name="NotifyOnCloneInstallation">
++    <tupleInline>
++      <stringInline value="OnShipJumpCloneInstallationDone" />
++    </tupleInline>
++  </elementDef>
++  
+ </elements>
+ 
+ 
+Index: branches/experimental/src/eve-server/character/CertificateMgrDB.cpp
+===================================================================
+--- branches/experimental/src/eve-server/character/CertificateMgrDB.cpp	(revision 1081)
++++ branches/experimental/src/eve-server/character/CertificateMgrDB.cpp	(working copy)
+@@ -25,19 +25,6 @@
+ 
+ #include "EVEServerPCH.h"
+ 
+-PyRep* CertificateMgrDB::GetMyCertificates( uint32 characterID )
+-{
+-    sLog.Debug( "CertificateMgrDB", "Called GetMyCertificates stub." );
+-
+-	util_Rowset rs;
+-
+-	rs.header.push_back( "certificateID" );
+-	rs.header.push_back( "grantDate" );
+-	rs.header.push_back( "visiblityFlags" );
+-
+-	return rs.Encode();
+-}
+-
+ PyRep *CertificateMgrDB::GetCertificateCategories() {
+ 	DBQueryResult res;
+ 
+Index: branches/experimental/src/eve-server/character/CertificateMgrService.cpp
+===================================================================
+--- branches/experimental/src/eve-server/character/CertificateMgrService.cpp	(revision 1081)
++++ branches/experimental/src/eve-server/character/CertificateMgrService.cpp	(working copy)
+@@ -48,7 +48,29 @@
+ }
+ 
+ PyResult CertificateMgrService::Handle_GetMyCertificates(PyCallArgs &call) {
+-    return(m_db.GetMyCertificates(call.client->GetCharacterID()));
++	Character::Certificates crt;
++	CharacterRef ch = call.client->GetChar();
++	ch->GetCertificates( crt );
++
++	util_Rowset rs;
++	rs.lines = new PyList;
++
++	rs.header.push_back( "certificateID" );
++	rs.header.push_back( "grantDate" );
++	rs.header.push_back( "visibilityFlags" );
++	
++	uint32 i = 0;
++	PyList* fieldData = new PyList;
++	for( i = 0; i < crt.size(); i++ )
++	{
++		fieldData->AddItemInt( crt.at( i ).certificateID );
++		fieldData->AddItemInt( crt.at( i ).grantDate );
++		fieldData->AddItemInt( crt.at( i ).visibilityFlags );
++		rs.lines->AddItem( fieldData );
++		fieldData = new PyList;
++	}
++
++    return rs.Encode();
+ }
+ 
+ PyResult CertificateMgrService::Handle_GetCertificateCategories(PyCallArgs &call) {
+@@ -102,8 +124,11 @@
+         _log(CLIENT__ERROR, "Failed to decode args.");
+         return(NULL);
+     }
++	CharacterRef ch = call.client->GetChar();
+ 
+-    return(_GrantCertificate(call.client->GetCharacterID(), arg.arg) ? new PyInt(arg.arg) : NULL);
++	ch->GrantCertificate( arg.arg );
++
++    return( new PyBool( true ) );
+ }
+ 
+ PyResult CertificateMgrService::Handle_BatchCertificateGrant(PyCallArgs &call) {
+@@ -114,13 +139,14 @@
+     }
+ 
+     PyList *res = new PyList;
++	CharacterRef ch = call.client->GetChar();
+ 
+     std::vector<int32>::iterator cur, end;
+     cur = arg.ints.begin();
+     end = arg.ints.end();
+     for(; cur != end; cur++) {
+-        if(_GrantCertificate(call.client->GetCharacterID(), *cur))
+-            res->AddItemInt(*cur);
++        ch->GrantCertificate( *cur );
++        res->AddItemInt(*cur);
+     }
+ 
+     return res;
+@@ -133,27 +159,16 @@
+         return(NULL);
+     }
+ 
++	CharacterRef ch = call.client->GetChar();
++
+     std::map<uint32, uint32>::iterator cur, end;
+     cur = args.update.begin();
+     end = args.update.end();
+     for(; cur != end; cur++)
+-        _UpdateCertificate(call.client->GetCharacterID(), cur->first, cur->second);
++		ch->UpdateCertificate( cur->first, cur->second );
+ 
+     return(NULL);
+ }
+ 
+-bool CertificateMgrService::_GrantCertificate(uint32 characterID, uint32 certificateID) {
+-    _log(SERVICE__MESSAGE, "%u asked to grant certificate %u.", characterID, certificateID);
+-    _log(SERVICE__ERROR, "Granting certificates not supported yet.");
+ 
+-    return(false);
+-}
+ 
+-bool CertificateMgrService::_UpdateCertificate(uint32 characterID, uint32 certificateID, bool pub) {
+-    _log(SERVICE__MESSAGE, "%u asked to make his certificate %u %s.", characterID, certificateID, (pub ? "public" : "private"));
+-    _log(SERVICE__ERROR, "Updating certificates not supported yet.");
+-
+-    return(false);
+-}
+-
+-
+Index: branches/experimental/src/eve-server/character/Character.cpp
+===================================================================
+--- branches/experimental/src/eve-server/character/Character.cpp	(revision 1081)
++++ branches/experimental/src/eve-server/character/Character.cpp	(working copy)
+@@ -417,6 +417,8 @@
+     if( !m_factory.db().LoadSkillQueue( itemID(), m_skillQueue ) )
+         return false;
+ 
++	if( !m_factory.db().LoadCertificates( itemID(), m_certificates ) )
++		return false;
+     // Calculate total SP trained and store in internal variable:
+     _CalculateTotalSPTrained();
+ 
+@@ -487,6 +489,17 @@
+     return GetSkill(skillTypeID);
+ }
+ 
++bool Character::HasCertificate( uint32 certificateID ) const
++{
++	uint32 i = 0;
++	for( i = 0; i < m_certificates.size(); i++ )
++	{
++		if( m_certificates.at( i ).certificateID == certificateID )return true;
++	}
++	
++	return false;
++}
++
+ SkillRef Character::GetSkill(uint32 skillTypeID) const
+ {
+     InventoryItemRef skill = GetByTypeFlag( skillTypeID, flagSkill );
+@@ -652,6 +665,33 @@
+     m_skillQueue.push_back( qs );
+ }
+ 
++void Character::GrantCertificate( uint32 certificateID )
++{
++	cCertificates i;
++	i.certificateID = certificateID;
++	i.grantDate = Win32TimeNow();
++	i.visibilityFlags = true;
++
++	m_certificates.push_back( i );
++}
++
++void Character::UpdateCertificate( uint32 certificateID, bool pub )
++{
++	uint32 i;
++	for( i = 0; i < m_certificates.size(); i ++ )
++	{
++		if( m_certificates.at( i ).certificateID == certificateID )
++		{
++			m_certificates.at( i ).visibilityFlags = pub ;
++		}
++	}
++}
++
++void Character::GetCertificates( Certificates &crt )
++{
++	crt = m_certificates;
++}
++
+ void Character::ClearSkillQueue()
+ {
+     m_skillQueue.clear();
+@@ -970,6 +1010,7 @@
+     for(; cur != end; cur++)
+         cur->get()->SaveAttributes();
+         //cur->get()->mAttributeMap.Save();
++	SaveCertificates();
+ }
+ 
+ void Character::SaveSkillQueue() const {
+@@ -982,6 +1023,15 @@
+     );
+ }
+ 
++void Character::SaveCertificates() const {
++	_log( ITEM__TRACE, "Saving Implants of character %u", itemID() );
++
++	m_factory.db().SaveCertificates(
++		itemID(),
++		m_certificates
++	);
++}
++
+ void Character::_CalculateTotalSPTrained()
+ {
+     // Loop through all skills trained and calculate total SP this character has trained so far,
+Index: branches/experimental/src/eve-server/corporation/CorporationDB.cpp
+===================================================================
+--- branches/experimental/src/eve-server/corporation/CorporationDB.cpp	(revision 1081)
++++ branches/experimental/src/eve-server/corporation/CorporationDB.cpp	(working copy)
+@@ -304,6 +304,7 @@
+     sLog.Debug( "CorporationDB", "Called GetMedalsReceived stub." );
+ 
+     util_Rowset rs;
++	rs.lines = new PyList;
+ 
+     rs.header.push_back( "medalID" );
+     rs.header.push_back( "title" );
+@@ -1276,8 +1277,9 @@
+ //replace all the typeID of the character's clones
+ bool CorporationDB::ChangeCloneType(uint32 characterID, uint32 typeID) {
+     DBQueryResult res;
++	DBerror err;
+ 
+-    if(sDatabase.RunQuery(res,
++    if(!sDatabase.RunQuery(res,
+         "SELECT "
+         " typeID, typeName "
+         "FROM "
+@@ -1297,7 +1299,7 @@
+     }
+     std::string typeNameString = row.GetText(1);
+ 
+-	if(sDatabase.RunQuery(res,
++	if(!sDatabase.RunQuery(err,
+ 		"UPDATE "
+ 		"entity "
+ 		"SET typeID=%u, itemName='%s' "
+@@ -1307,17 +1309,40 @@
+         typeNameString.c_str(),
+ 		characterID))
+ 	{
+-		_log(DATABASE__ERROR, "Failed to change clone type of char %u: %s.", characterID, res.error.c_str());
++		_log(DATABASE__ERROR, "Failed to change clone type of char %u: %s.", characterID, err.c_str());
+ 		return false;
+ 	}
+     sLog.Debug( "CorporationDB", "Clone upgrade successful" );
+ 	return true;
+ }
+ 
++PyRep *CorporationDB::GetPotentialHomeStations( uint32 constellationID )
++{
++	DBQueryResult res;
+ 
++	if( !sDatabase.RunQuery( res,
++		"SELECT staStations.stationID,"
++		" staStations.stationTypeID as typeID,"
++		" CAST(SUM(staOperationServices.serviceID) as UNSIGNED INTEGER) AS serviceMask"
++		" FROM staStations"
++		" LEFT JOIN staOperations ON staStations.operationID = staOperations.operationID "
++		" LEFT JOIN staOperationServices ON staStations.operationID = staOperationServices.operationID "
++		" WHERE staStations.constellationID=%u"
++		" GROUP BY staStations.stationID", constellationID ))
++	{
++		_log(DATABASE__ERROR, "Failed to get Potential Home Stations for constellationID %u. Error: %s", constellationID, res.error.c_str() );
++		return NULL;
++	}
+ 
++	return DBResultToRowset( res );
++}
+ 
+ 
+ 
+ 
+ 
++
++
++
++
++
+Index: branches/experimental/src/eve-server/corporation/CorpStationMgrService.cpp
+===================================================================
+--- branches/experimental/src/eve-server/corporation/CorpStationMgrService.cpp	(revision 1081)
++++ branches/experimental/src/eve-server/corporation/CorpStationMgrService.cpp	(working copy)
+@@ -199,9 +199,10 @@
+ 	//returns a rowset: stationID, typeID
+ 
+ 	_log(CLIENT__ERROR, "Hacking GetPotentialHomeStations");
+-	result = m_db.ListCorpStations(call.client->GetCorporationID());
++	/*result = m_db.ListCorpStations(call.client->GetCorporationID());
+ 
+-	return result;
++	return result;*/
++	return m_db.GetPotentialHomeStations( call.client->GetConstellationID() );
+ }
+ 
+ PyResult CorpStationMgrIMBound::Handle_SetHomeStation(PyCallArgs &call) {
+Index: branches/experimental/src/eve-server/inventory/InventoryDB.cpp
+===================================================================
+--- branches/experimental/src/eve-server/inventory/InventoryDB.cpp	(revision 1081)
++++ branches/experimental/src/eve-server/inventory/InventoryDB.cpp	(working copy)
+@@ -1489,6 +1489,26 @@
+         _log(DATABASE__MESSAGE, "Ignoring error.");
+     }
+ 
++	// certificates
++	if( !sDatabase.RunQuery( err,
++		"DELETE FROM chrcertificates"
++		" WHERE characterID=%u", characterID))
++	{
++		_log(DATABASE__ERROR, "Failed to delete certificates of character %u: %s", characterID, err.c_str() );
++		// ignore the error
++		_log(DATABASE__MESSAGE, "Ignoring error." );
++	}
++
++	// clones
++	if( !sDatabase.RunQuery( err,
++		"DELETE FROM chrclones"
++		" WHERE characterID=%u", characterID))
++	{
++		_log(DATABASE__ERROR, "Failed to delete clones of character %u: %s", characterID, err.c_str() );
++		// ignore the error
++		_log(DATABASE__MESSAGE, "Ignoring error." );
++	}
++
+     // character_
+     if(!sDatabase.RunQuery(err,
+         "DELETE FROM character_"
+@@ -1675,6 +1695,81 @@
+     return true;
+ }
+ 
++bool InventoryDB::LoadCertificates( uint32 characterID, Certificates &into )
++{
++	DBQueryResult res;
++
++	if( !sDatabase.RunQuery( res,
++		"SELECT"
++		" certificateID,"
++		" grantDate,"
++		" visibilityFlags"
++		" FROM chrcertificates"
++		" WHERE characterID=%u",
++		characterID ))
++	{
++		_log(DATABASE__ERROR, "Failed to query certificates of character %u: %s", characterID, res.error.c_str() );
++		return false;
++	}
++
++	DBResultRow row;
++	while( res.GetRow( row ) )
++	{
++		currentCertificates i;
++		i.certificateID = row.GetUInt( 0 );
++		i.grantDate = row.GetUInt64( 1 );
++		i.visibilityFlags = row.GetUInt( 2 );
++
++		into.push_back( i );
++	}
++
++	return true;
++
++}
++
++bool InventoryDB::SaveCertificates( uint32 characterID, const Certificates &from )
++{
++	DBerror err;
++
++	if( !sDatabase.RunQuery( err,
++		"DELETE"
++		" FROM chrcertificates"
++		" WHERE characterID = %u",
++		characterID ))
++	{
++		_log(DATABASE__ERROR, "Failed to delete certificates of character %u: %s", characterID, err.c_str() );
++		return false;
++	}
++
++	if( from.empty( ) )return true;
++
++	std::string query;
++
++	for(size_t i = 0; i < from.size(); i++)
++	{
++		const currentCertificates &im = from[ i ];
++
++		char buf[ 64 ];
++		snprintf( buf, 64, "(NULL, %u, %u, "I64u", %u)", characterID, im.certificateID, im.grantDate, im.visibilityFlags );
++		if( i != 0 )
++			query += ',';
++		query += buf;
++
++	}
++
++	if( !sDatabase.RunQuery( err,
++		"INSERT"
++		" INTO chrcertificates (id, characterID, certificateID, grantDate, visibilityFlags)"
++		" VALUES %s",
++		query.c_str() ))
++	{
++		_log(DATABASE__ERROR, "Failed to insert certificates of character %u: %s", characterID, err.c_str() );
++		return false;
++	}
++
++	return true;
++}
++
+ bool InventoryDB::SaveSkillQueue(uint32 characterID, const SkillQueue &queue) {
+     DBerror err;
+ 
+Index: branches/experimental/src/eve-server/station/JumpCloneService.cpp
+===================================================================
+--- branches/experimental/src/eve-server/station/JumpCloneService.cpp	(revision 1081)
++++ branches/experimental/src/eve-server/station/JumpCloneService.cpp	(working copy)
+@@ -44,6 +44,10 @@
+ 		
+ 		PyCallable_REG_CALL(JumpCloneBound, GetCloneState)
+ 		PyCallable_REG_CALL(JumpCloneBound, InstallCloneInStation)
++		PyCallable_REG_CALL(JumpCloneBound, GetPriceForClone)
++		PyCallable_REG_CALL(JumpCloneBound, CloneJump)
++		PyCallable_REG_CALL(JumpCloneBound, DestroyInstalledClone)
++		PyCallable_REG_CALL(JumpCloneBound, GetShipCloneState)
+ 	}
+ 	virtual ~JumpCloneBound() { delete m_dispatch; }
+ 	virtual void Release() {
+@@ -53,6 +57,10 @@
+ 	
+ 	PyCallable_DECL_CALL(GetCloneState)
+ 	PyCallable_DECL_CALL(InstallCloneInStation)
++	PyCallable_DECL_CALL(GetPriceForClone)
++	PyCallable_DECL_CALL(CloneJump)
++	PyCallable_DECL_CALL(DestroyInstalledClone)
++	PyCallable_DECL_CALL(GetShipCloneState)
+ 
+ protected:
+ 	StationDB *const m_db;		//we do not own this
+@@ -87,8 +95,8 @@
+ 	//takes no arguments, returns no arguments
+ 
+     sLog.Debug( "JumpCloneBound", "Called InstallCloneInStation stub." );
+-
+-    return new PyNone;
++	
++    return m_db->InstallClone( call.client->GetCharacterID(), call.client->GetStationID(), call.client );
+ }
+ 
+ PyResult JumpCloneBound::Handle_GetCloneState(PyCallArgs &call) {
+@@ -99,15 +107,48 @@
+     sLog.Debug( "JumpCloneBound", "Called GetCloneState stub." );
+ 
+ 	PyDict* d = new PyDict;
+-	d->SetItemString( "clones", new PyNone );
++	d->SetItemString( "clones", m_db->GetCharacterClones( call.client->GetCharacterID() ) );
+ 	d->SetItemString( "implants", new PyNone );
+-	d->SetItemString( "timeLastJump", new PyNone );
++	d->SetItemString( "timeLastJump", new PyNone ); // Free clone jumping!!!
+ 
+ 	return new PyObject(
+         new PyString( "util.KeyVal" ), d
+     );
+ }
+ 
++
++PyResult JumpCloneBound::Handle_GetPriceForClone(PyCallArgs &call) {
++	return new PyFloat( 1125000 ); // Harcoded
++}
++
++PyResult JumpCloneBound::Handle_CloneJump( PyCallArgs &call )
++{
++	// What should we do here ?
++	sLog.Debug( "JumpCloneBound", "Called CloneJump stub" );
++	return new PyBool( true ); // Lets try this
++}
++
++PyResult JumpCloneBound::Handle_DestroyInstalledClone( PyCallArgs &call )
++{
++	Call_SingleIntegerArg arg;
++	sLog.Debug( "JumpCloneBound", "Called DestroyInstalledClone stub" );
++	
++	if( !arg.Decode( &call.tuple ) )
++	{
++		sLog.Error( "JumpCloneBound" ,"Wrong parameters to DestroyInstalledClone");
++		return NULL;
++	}
++
++	return m_db->DestroyClone( call.client->GetCharacterID(), arg.arg, call.client->GetStationID(), call.client );
++}
++
++PyResult JumpCloneBound::Handle_GetShipCloneState( PyCallArgs &call )
++{
++	sLog.Debug( "JumpCloneBound", "Called GetShipCloneState stub" );
++	
++	return NULL; // Harcoded, what should we do here?
++}
++
+ /*
+ PyResult JumpCloneService::Handle_(PyCallArgs &call) {
+ 	PyRep *result = NULL;
+Index: branches/experimental/src/eve-server/station/StationDB.cpp
+===================================================================
+--- branches/experimental/src/eve-server/station/StationDB.cpp	(revision 1081)
++++ branches/experimental/src/eve-server/station/StationDB.cpp	(working copy)
+@@ -146,21 +146,93 @@
+ 	return result;
+ }
+ 
++PyRep *StationDB::InstallClone( uint32 characterID, uint32 stationID, Client* who )
++{
++	// First fetch the clone type
++	DBQueryResult res;
++	DBerror err;
++	uint32 itemID = 0;
+ 
++	if( !sDatabase.RunQuery( res,
++		"SELECT itemID"
++		" FROM entity"
++		" WHERE flag=400"
++		" AND custominfo='active'"
++		" AND ownerID=%u", characterID ))
++	{
++		_log(SERVICE__ERROR, "Error in InstallCloneInStation: %s", res.error.c_str() );
++		return new PyBool( false );
++	}
+ 
++	DBResultRow row;
++	if( !res.GetRow( row ) )
++	{
++		_log(SERVICE__ERROR, "Error in InstallCloneInStation query: no clone for character %u", characterID );
++		return new PyBool( false );
++	}
+ 
++	itemID = row.GetInt( 0 );
+ 
++	if( !sDatabase.RunQuery( err,
++		"INSERT INTO chrclones("
++		"id,"
++		" characterID,"
++		" stationID,"
++		" itemID"
++		")VALUES("
++		"NULL,"
++		" %u,"
++		" %u,"
++		" %u)", characterID, stationID, itemID ))
++	{
++		_log(SERVICE__ERROR, "Error in InstallCloneInStation when adding info: %s", res.error.c_str() );
++		return new PyBool( true );
++	}
+ 
++	/*NotifyOnCloneInstallation n;
++	 n.cloneTypeID = itemID;
+ 
++	PyTuple* t = n.Encode();
++	who->SendNotification( "OnShipJumpCloneInstallationDone", "cloneTypeID", &t);*/
+ 
++	return new PyBool( true );
++}
+ 
+ 
++PyRep *StationDB::GetCharacterClones( uint32 characterID )
++{
++	DBQueryResult res;
+ 
++	if( !sDatabase.RunQuery( res, 
++		"SELECT stationID AS locationID,"
++		" itemID AS jumpCloneID"
++		" FROM chrclones"
++		" WHERE characterID=%u", characterID ))
++	{
++		_log(SERVICE__ERROR, "Can't get the clones for character %u. Error: %s", characterID, res.error.c_str() );
++		return new PyNone;
++	}
+ 
++	return DBResultToRowset( res );
++}
+ 
+ 
++PyRep *StationDB::DestroyClone( uint32 characterID, uint32 cloneID, uint32 locationID, Client* who )
++{
++	DBerror err;
+ 
++	if( !sDatabase.RunQuery( err,
++		"DELETE FROM chrclones"
++		" WHERE stationID=%u"
++		" AND itemID=%u"
++		" AND characterID=%u", locationID, cloneID, characterID ))
++	{
++		_log(SERVICE__ERROR, "Can't delete clone %u for character %u. Error: %s", cloneID, characterID, err.c_str() );
++		return NULL;
++	}
+ 
++	return new PyBool( true );
++}
+ 
+ 
+ 
+@@ -171,3 +243,17 @@
+ 
+ 
+ 
++
++
++
++
++
++
++
++
++
++
++
++
++
++

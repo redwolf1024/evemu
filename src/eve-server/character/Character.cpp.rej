@@ -1,0 +1,17 @@
+***************
+*** 757,763 ****
+              {
+                  OnSkillStartTraining osst;
+                  osst.itemID = currentTraining->itemID();
+-                 osst.endOfTraining = (int64)(timeTraining.get_float());
+  
+                  PyTuple* tmp = osst.Encode();
+                  c->QueueDestinyEvent( &tmp );
+--- 757,763 ----
+              {
+                  OnSkillStartTraining osst;
+                  osst.itemID = currentTraining->itemID();
++                 osst.endOfTraining = (double)(timeTraining.get_float());
+  
+                  PyTuple* tmp = osst.Encode();
+                  c->QueueDestinyEvent( &tmp );

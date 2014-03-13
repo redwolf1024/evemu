@@ -1,0 +1,17 @@
+***************
+*** 63,69 ****
+  	const double beltdistance = 25000.0;
+  	double roidradius;
+  	const double beltangle = M_PI * 2.0 / 3.0;
+- 	const uint32 pcs = 20 + MakeRandomInt( -10, 10 );   // reduced from 160 + MakeRandomInt( -10, 10 ) to facilitate easier debugging
+  
+  	const GPoint position( who->GetPosition() );
+  
+--- 63,69 ----
+  	const double beltdistance = 25000.0;
+  	double roidradius;
+  	const double beltangle = M_PI * 2.0 / 3.0;
++ 	const int64 pcs = 20 + MakeRandomInt( -10, 10 );   // reduced from 160 + MakeRandomInt( -10, 10 ) to facilitate easier debugging
+  
+  	const GPoint position( who->GetPosition() );
+  

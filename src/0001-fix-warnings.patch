@@ -1,0 +1,141 @@
+From 098d75512593a854c321586c5cab0e4727a792b4 Mon Sep 17 00:00:00 2001
+From: gpcore <gpcore777@gmail.com>
+Date: Thu, 25 Aug 2011 23:09:05 +0800
+Subject: [PATCH] fix warnings
+
+---
+ src/eve-common/marshal/EVEMarshal.cpp            |    2 +-
+ src/eve-server/character/Character.cpp           |    2 +-
+ src/eve-server/manufacturing/RamProxyService.cpp |    6 +++---
+ src/eve-server/mining/MiningCommands.cpp         |    2 +-
+ src/eve-server/mining/ReprocessingService.cpp    |    2 +-
+ src/eve-server/ship/DestinyManager.cpp           |    4 ++--
+ src/eve-server/spawn/SpawnManager.cpp            |    4 ++--
+ 7 files changed, 11 insertions(+), 11 deletions(-)
+
+diff --git src/eve-common/marshal/EVEMarshal.cpp src/eve-common/marshal/EVEMarshal.cpp
+index 72ba9dd..1d9ada0 100644
+--- src/eve-common/marshal/EVEMarshal.cpp
++++ src/eve-common/marshal/EVEMarshal.cpp
+@@ -450,7 +450,7 @@ bool MarshalStream::VisitPackedRow( const PyPackedRow* rep )
+ 
+             case DBTYPE_R4:
+             {
+-                unpacked.Append<float>( r->IsNone() ? 0.0 : r->AsFloat()->value() );
++                unpacked.Append<double>( r->IsNone() ? 0.0 : r->AsFloat()->value() );
+             } break;
+ 
+             case DBTYPE_BOOL:
+diff --git src/eve-server/character/Character.cpp src/eve-server/character/Character.cpp
+index 423bfed..fb4ca09 100644
+--- src/eve-server/character/Character.cpp
++++ src/eve-server/character/Character.cpp
+@@ -757,7 +757,7 @@ void Character::UpdateSkillQueue()
+             {
+                 OnSkillStartTraining osst;
+                 osst.itemID = currentTraining->itemID();
+-                osst.endOfTraining = (int64)(timeTraining.get_float());
++                osst.endOfTraining = (double)(timeTraining.get_float());
+ 
+                 PyTuple* tmp = osst.Encode();
+                 c->QueueDestinyEvent( &tmp );
+diff --git src/eve-server/manufacturing/RamProxyService.cpp src/eve-server/manufacturing/RamProxyService.cpp
+index d11ebe3..fdbcd2b 100644
+--- src/eve-server/manufacturing/RamProxyService.cpp
++++ src/eve-server/manufacturing/RamProxyService.cpp
+@@ -216,7 +216,7 @@ PyResult RamProxyService::Handle_InstallJob(PyCallArgs &call) {
+                 continue;       // not interested
+ 
+             // calculate needed quantity
+-            uint32 qtyNeeded = ceil(cur->quantity * rsp.materialMultiplier * args.runs);
++            double qtyNeeded = ceil(cur->quantity * rsp.materialMultiplier * args.runs);
+             if(cur->damagePerJob == 1.0)
+                 qtyNeeded = ceil(qtyNeeded * rsp.charMaterialMultiplier);   // skill multiplier is applied only on fully consumed materials
+ 
+@@ -274,7 +274,7 @@ PyResult RamProxyService::Handle_CompleteJob(PyCallArgs &call) {
+     end = reqItems.end();
+     for(; cur != end; cur++) {
+         if(!cur->isSkill && cur->damagePerJob != 1.0) {
+-            uint32 quantity = cur->quantity * runs * (1.0 - cur->damagePerJob);
++            double quantity = cur->quantity * runs * (1.0 - cur->damagePerJob);
+             if(quantity == 0)
+                 continue;
+ 
+@@ -706,7 +706,7 @@ void RamProxyService::_VerifyInstallJob_Install(const Rsp_InstallJob &rsp, const
+             // check materials
+ 
+             // calculate needed quantity
+-            uint32 qtyNeeded = ceil(cur->quantity * rsp.materialMultiplier * runs);
++            double qtyNeeded = ceil(cur->quantity * rsp.materialMultiplier * runs);
+             if(cur->damagePerJob == 1.0)
+                 qtyNeeded = ceil(qtyNeeded * rsp.charMaterialMultiplier);   // skill multiplier is applied only on fully consumed materials
+ 
+diff --git src/eve-server/mining/MiningCommands.cpp src/eve-server/mining/MiningCommands.cpp
+index 161c2d5..ad80ce3 100644
+--- src/eve-server/mining/MiningCommands.cpp
++++ src/eve-server/mining/MiningCommands.cpp
+@@ -63,7 +63,7 @@ PyResult Command_spawnbelt( Client* who, CommandDB* db, PyServiceMgr* services,
+ 	const double beltdistance = 25000.0;
+ 	double roidradius;
+ 	const double beltangle = M_PI * 2.0 / 3.0;
+-	const uint32 pcs = 20 + MakeRandomInt( -10, 10 );   // reduced from 160 + MakeRandomInt( -10, 10 ) to facilitate easier debugging
++	const int64 pcs = 20 + MakeRandomInt( -10, 10 );   // reduced from 160 + MakeRandomInt( -10, 10 ) to facilitate easier debugging
+ 
+ 	const GPoint position( who->GetPosition() );
+ 
+diff --git src/eve-server/mining/ReprocessingService.cpp src/eve-server/mining/ReprocessingService.cpp
+index 72ffa83..95442cc 100644
+--- src/eve-server/mining/ReprocessingService.cpp
++++ src/eve-server/mining/ReprocessingService.cpp
+@@ -256,7 +256,7 @@ PyResult ReprocessingServiceBound::Handle_Reprocess(PyCallArgs &call) {
+         cur_rec = recoverables.begin();
+         end_rec = recoverables.end();
+         for(; cur_rec != end_rec; cur_rec++) {
+-            uint32 quantity = cur_rec->amountPerBatch * efficiency * (1.0 - m_tax) * item->quantity() / item->type().portionSize();
++            double quantity = cur_rec->amountPerBatch * efficiency * (1.0 - m_tax) * item->quantity() / item->type().portionSize();
+             if(quantity == 0)
+                 continue;
+ 
+diff --git src/eve-server/ship/DestinyManager.cpp src/eve-server/ship/DestinyManager.cpp
+index f8656ec..bd8c727 100644
+--- src/eve-server/ship/DestinyManager.cpp
++++ src/eve-server/ship/DestinyManager.cpp
+@@ -937,11 +937,11 @@ void DestinyManager::Orbit(SystemEntity *who, double distance, bool update) {
+ 
+ void DestinyManager::SetShipCapabilities(InventoryItemRef ship)
+ {
+-	double mass = ship->GetAttribute(AttrMass).get_int();               // Aknor: EVEAttributeMgr cant find this
++	int64 mass = ship->GetAttribute(AttrMass).get_int();               // Aknor: EVEAttributeMgr cant find this
+ 	double radius = ship->GetAttribute(AttrRadius).get_float();         // Aknor: EVEAttributeMgr cant find this, assertion failed: "mType == evil_number_float", line 189 EvilNumber.h
+ 	double Inertia = ship->GetAttribute(AttrInertia).get_float();       // Aknor: EVEAttributeMgr cant find this, assertion failed: "mType == evil_number_float", line 189 EvilNumber.h
+ 	double agility = ship->GetAttribute(AttrAgility).get_float();
+-	int maxVelocity = ship->GetAttribute(AttrMaxVelocity).get_int();
++	int64 maxVelocity = ship->GetAttribute(AttrMaxVelocity).get_int();
+ 
+ 	//might need to care about turnAngle: Maximum turn angle of a ship in Radians, 0 to pi (3.14). 
+ 	//might need newAgility: Maximum "Thrust angle" for an object in Radians, 0 to pi (3.14).
+diff --git src/eve-server/spawn/SpawnManager.cpp src/eve-server/spawn/SpawnManager.cpp
+index 6efa13e..424c569 100644
+--- src/eve-server/spawn/SpawnManager.cpp
++++ src/eve-server/spawn/SpawnManager.cpp
+@@ -167,7 +167,7 @@ void SpawnEntry::_DoSpawn(SystemManager &mgr, PyServiceMgr &svc) {
+ 	}
+ 	
+ 	if(spawned.empty()) {
+-		int timer = MakeRandomInt(m_timerMin, m_timerMax);
++		int64 timer = MakeRandomInt(m_timerMin, m_timerMax);
+ 		_log(SPAWN__POP, "No NPCs produced by spawn entry %u. Resetting spawn timer to %d s.", m_id, timer);
+ 		m_timer.Start(timer*1000);
+ 		return;
+@@ -218,7 +218,7 @@ void SpawnEntry::SpawnDepoped(uint32 npcID) {
+ 	}
+ 	
+ 	if(m_spawnedIDs.empty()) {
+-		int timer = MakeRandomInt(m_timerMin, m_timerMax);
++		int64 timer = MakeRandomInt(m_timerMin, m_timerMax);
+ 		_log(SPAWN__DEPOP, "Spawn entry %u's entire spawn group has depopped, resetting timer to %d s.", m_id, timer);
+ 		m_timer.Start(timer*1000);
+ 	}
+-- 
+1.7.4.msysgit.0
+

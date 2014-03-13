@@ -1,0 +1,17 @@
+***************
+*** 445,451 ****
+  
+              case DBTYPE_R4:
+              {
+-                 unpacked.Append<float>( r->IsNone() ? 0.0 : r->AsFloat()->value() );
+              } break;
+  
+              case DBTYPE_BOOL:
+--- 445,451 ----
+  
+              case DBTYPE_R4:
+              {
++                 unpacked.Append<double>( r->IsNone() ? 0.0 : r->AsFloat()->value() );
+              } break;
+  
+              case DBTYPE_BOOL:
